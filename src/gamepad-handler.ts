@@ -2,7 +2,6 @@ import { AxisInformation } from './axe-utils'
 import { ButtonInformation } from './button-utils'
 import { GamepadMapping, GamepadOptions, GamepadsMapping, handleGamepad, linkGamepadsToMappings } from './gamepad-utils'
 
-const KEYBOARD_BUTTONS_TIME_LOOP = 50
 const DEFAULT_ACTION_THROTTLE = 500
 const DEFAULT_MIN_THRESHOLD = -0.3
 const DEFAULT_MAX_THRESHOLD = 0.3
@@ -21,30 +20,33 @@ export class GamePadHandler {
   constructor(public gamepadsMapping: GamepadsMapping, public readonly options: GamepadOptions = {}, _window: Window = window) {
     this.window = _window
 
-    this.options.keyboardButtonsTimeLoop = this.options.keyboardButtonsTimeLoop || KEYBOARD_BUTTONS_TIME_LOOP
     this.options.defaultActionThrottle = this.options.defaultActionThrottle || DEFAULT_ACTION_THROTTLE
     this.options.defaultNegativeThreshold = this.options.defaultNegativeThreshold || DEFAULT_MIN_THRESHOLD
     this.options.defaultPositiveThreshold = this.options.defaultPositiveThreshold || DEFAULT_MAX_THRESHOLD
   }
 
   public start(): void {
-    this.gamepadsMapping.forEach((gp: GamepadMapping) => {
-      gp.buttonsMapping.forEach((btn: ButtonInformation) => {
-        btn.canExecuteAction = true
-        btn.delay = btn.delay || this.options.defaultActionThrottle
+    if (this.window.navigator.getGamepads !== undefined) {
+      this.gamepadsMapping.forEach((gp: GamepadMapping) => {
+        gp.buttonsMapping.forEach((btn: ButtonInformation) => {
+          btn.canExecuteAction = true
+          btn.delay = btn.delay || this.options.defaultActionThrottle
+        })
+
+        gp.axesMapping.forEach((axis: AxisInformation) => {
+          axis.canExecuteAction1 = true
+          axis.canExecuteAction2 = true
+          axis.delay = axis.delay || this.options.defaultActionThrottle
+
+          axis.positiveThreshold = axis.positiveThreshold || this.options.defaultNegativeThreshold
+          axis.negativeThreshold = axis.positiveThreshold || this.options.defaultPositiveThreshold
+        })
       })
 
-      gp.axesMapping.forEach((axis: AxisInformation) => {
-        axis.canExecuteAction1 = true
-        axis.canExecuteAction2 = true
-        axis.delay = axis.delay || this.options.defaultActionThrottle
-
-        axis.positiveThreshold = axis.positiveThreshold || this.options.defaultNegativeThreshold
-        axis.negativeThreshold = axis.positiveThreshold || this.options.defaultPositiveThreshold
-      })
-    })
-
-    this.listen()
+      this.listen()
+    } else {
+      console.warn('Browser does not support Gamepad API - https://developer.mozilla.org/en-US/docs/Web/API/Gamepad_API')
+    }
   }
 
   public stop(): void {
@@ -57,30 +59,35 @@ export class GamePadHandler {
         this.state = GamePadHandlerState.STARTED
 
         // Infinite loop to listen to the state of the game pads
-        this.window.setInterval(() => {
-          const gamepadList: any = this.window.navigator.getGamepads()
-          const gamepads: Array<Gamepad> = []
-
-          for (const gp of gamepadList) {
-            if (gp !== null && gp !== undefined) {
-              gamepads.push(gp)
-            }
-          }
-
-          if (gamepads.length === 0) {
-            this.state = GamePadHandlerState.OFF
-            return
-          }
-
-          const gamepadsMapped = linkGamepadsToMappings(gamepads, this.gamepadsMapping)
-
-          gamepadsMapped.forEach((gamepadMapped: [Gamepad, GamepadMapping]) => {
-            const [gp, gpMapping] = gamepadMapped
-            handleGamepad(gp, gpMapping, this.window)
-          })
-        }, this.options.keyboardButtonsTimeLoop)
-
+        requestAnimationFrame(() => this.gamepadLoop(this))
       }
     })
+  }
+
+  private gamepadLoop(that: GamePadHandler): void {
+    const gamepadList: any = that.window.navigator.getGamepads()
+    const gamepads: Array<Gamepad> = []
+
+    for (const gp of gamepadList) {
+      if (gp !== null && gp !== undefined) {
+        gamepads.push(gp)
+      }
+    }
+
+    if (gamepads.length === 0) {
+      that.state = GamePadHandlerState.OFF
+      return
+    }
+
+    const gamepadsMapped = linkGamepadsToMappings(gamepads, that.gamepadsMapping)
+
+    gamepadsMapped.forEach((gamepadMapped: [Gamepad, GamepadMapping]) => {
+      const [gp, gpMapping] = gamepadMapped
+      handleGamepad(gp, gpMapping, that.window)
+    })
+
+    if (that.state !== GamePadHandlerState.OFF) {
+      requestAnimationFrame(() => that.gamepadLoop(that))
+    }
   }
 }

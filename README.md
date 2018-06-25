@@ -79,7 +79,6 @@ The `action` property is a method, and the `key` property is [the parameter](htt
 ### GamePad Handler
 The gamePad Handler constructor takes 4 parameters, one is mandatory:
 - `gamepadsMapping` : an Array of **GamePadMapping**
-- `keyboardButtonsTimeLoop` : the number of milliseconds before checking the new state of the button. By default: 50ms
 - `defaultActionThrottle`: the default number of milliseconds before the action can called again. By default: 500ms
 - `window` : a reference to your window object. Take by default the global window's variable. 
 
