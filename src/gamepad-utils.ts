@@ -7,6 +7,8 @@ export interface GamepadMapping {
   buttonsMapping: Array<ButtonInformation>
   axesMapping: Array<AxisInformation>
   debug?: boolean
+  onConnect?: (gamepadId: GamepadId) => void
+  onDisconnect?: (gamepadId: GamepadId) => void
 }
 
 export interface GamepadOptions {
@@ -16,21 +18,23 @@ export interface GamepadOptions {
   defaultPositiveThreshold?: number
 }
 
-export type GamepadsMapping = Array<GamepadMapping>
+export type GamepadId = number
 
-export function linkGamepadsToMappings(gamepads: Array<Gamepad>, gamepadsMapping: GamepadsMapping): Array<[Gamepad, GamepadMapping]> {
-  const gamepadsMapped: Array<[Gamepad, GamepadMapping]> = []
+export interface GamepadWithMappings {
+  gamepad: Gamepad,
+  mapping: GamepadMapping
+}
 
-  gamepads.forEach((gamepad: Gamepad) => {
-    gamepadsMapping.forEach((gamepadMapping: GamepadMapping) => {
+export function linkGamepadToMappings(gamepad: Gamepad, gamepadsMapping: Array<GamepadMapping>): GamepadWithMappings | undefined {
+  let gamepadMapped: GamepadWithMappings | undefined
 
-      if (gamepad.id.includes(gamepadMapping.identifier)) {
-        gamepadsMapped.push([gamepad, gamepadMapping])
-      }
-    })
+  gamepadsMapping.forEach((mapping: GamepadMapping) => {
+    if (gamepad.id.includes(mapping.identifier)) {
+      gamepadMapped = { gamepad, mapping }
+    }
   })
 
-  return gamepadsMapped
+  return gamepadMapped
 }
 
 export function handleGamepad(gamepad: Gamepad, gamepadMapping: GamepadMapping, window: Window): void {

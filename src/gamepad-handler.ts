@@ -1,6 +1,7 @@
 import { AxisInformation } from './axe-utils'
 import { ButtonInformation } from './button-utils'
-import { GamepadMapping, GamepadOptions, GamepadsMapping, handleGamepad, linkGamepadsToMappings } from './gamepad-utils'
+import { GamepadId, GamepadMapping, GamepadOptions, GamepadWithMappings, handleGamepad, linkGamepadToMappings } from './gamepad-utils'
+import { isNil } from './utils'
 
 const DEFAULT_ACTION_THROTTLE = 500
 const DEFAULT_MIN_THRESHOLD = -0.3
@@ -8,16 +9,16 @@ const DEFAULT_MAX_THRESHOLD = 0.3
 
 export enum GamePadHandlerState {
   OFF,
-  STARTED,
-  PAUSED,
-  STOPPED,
+  ON,
 }
 
 export class GamePadHandler {
   public readonly window: Window
   private state: GamePadHandlerState = GamePadHandlerState.OFF
+  private idToGamepad: Map<GamepadId, GamepadWithMappings> = new Map()
+  private lastTimestampCheck = 0
 
-  constructor(public gamepadsMapping: GamepadsMapping, public readonly options: GamepadOptions = {}, _window: Window = window) {
+  constructor(public gamepadsMapping: Array<GamepadMapping>, public readonly options: GamepadOptions = {}, _window: Window = window) {
     this.window = _window
 
     this.options.defaultActionThrottle = this.options.defaultActionThrottle || DEFAULT_ACTION_THROTTLE
@@ -50,44 +51,91 @@ export class GamePadHandler {
   }
 
   public stop(): void {
-    this.state = GamePadHandlerState.STOPPED
+    this.state = GamePadHandlerState.OFF
   }
 
   private listen(): void {
-    this.window.addEventListener('gamepadconnected', () => {
-      if (this.state === GamePadHandlerState.OFF) {
-        this.state = GamePadHandlerState.STARTED
+    // Infinite loop to listen to the state of the game pads
+    // this might be triggered only when some gamepad is connected, but because of bug in the Gamepad API implementations
+    // it has to be runned periodically for now
+    if (this.state === GamePadHandlerState.OFF) {
+      this.state = GamePadHandlerState.ON
+    }
+    requestAnimationFrame((time) => {
+      this.gamepadLoop(this, time)
+    })
 
-        // Infinite loop to listen to the state of the game pads
-        requestAnimationFrame(() => this.gamepadLoop(this))
+    this.window.addEventListener('gamepadconnected', (event) => {
+      this.checkGamepadAvailability((event as GamepadEvent).gamepad)
+    })
+
+    this.window.addEventListener('gamepaddisconnected', (event) => {
+      const gamepad = (event as GamepadEvent).gamepad
+      if (isNil(gamepad) === false && this.idToGamepad.has(gamepad.index) === true) {
+        this.idToGamepad.delete(gamepad.index)
+        const gamepadWithMapping = this.idToGamepad.get(gamepad.index)
+        if (gamepadWithMapping) {
+          const onDisconnect = gamepadWithMapping.mapping.onDisconnect
+          if (onDisconnect !== undefined) {
+            onDisconnect(gamepad.index)
+          }
+        }
       }
     })
   }
 
-  private gamepadLoop(that: GamePadHandler): void {
-    const gamepadList: any = that.window.navigator.getGamepads()
-    const gamepads: Array<Gamepad> = []
-
-    for (const gp of gamepadList) {
-      if (gp !== null && gp !== undefined) {
-        gamepads.push(gp)
+  private checkGamepadAvailability(gamepad: Gamepad): void {
+    if (isNil(gamepad) === false && this.idToGamepad.has(gamepad.index) === false) {
+      const gamepadWithMapping = linkGamepadToMappings(gamepad, this.gamepadsMapping)
+      console.warn(gamepad)
+      console.warn(gamepadWithMapping)
+      if (gamepadWithMapping) {
+        this.idToGamepad.set(gamepad.index, gamepadWithMapping)
+        const onConnect = gamepadWithMapping.mapping.onConnect
+        if (onConnect !== undefined) {
+          onConnect(gamepad.index)
+        }
       }
     }
+  }
 
-    if (gamepads.length === 0) {
-      that.state = GamePadHandlerState.OFF
-      return
+  private pollGamepads(that: GamePadHandler, timestamp: number) {
+    if (timestamp - that.lastTimestampCheck > 500) {
+      const gamepads = that.window.navigator.getGamepads()
+      if (isNil(gamepads) === false) {
+        gamepads.forEach((gamepad) => {
+          if (gamepad) {
+            this.checkGamepadAvailability(gamepad)
+          }
+        })
+      }
+      that.lastTimestampCheck = timestamp
     }
+  }
 
-    const gamepadsMapped = linkGamepadsToMappings(gamepads, that.gamepadsMapping)
+  private gamepadLoop(that: GamePadHandler, timestamp: number): void {
+    // Gamepad API implementations are quite bugy, for now it's necessary to poll gamepads periodically
+    // when gamepadconnected events will be triggered properly and with valid data it can be removed
+    this.pollGamepads(that, timestamp)
 
-    gamepadsMapped.forEach((gamepadMapped: [Gamepad, GamepadMapping]) => {
-      const [gp, gpMapping] = gamepadMapped
-      handleGamepad(gp, gpMapping, that.window)
-    })
+    if (this.idToGamepad.size !== 0) {
+      this.idToGamepad.forEach((gamepadWithMapping, index) => {
+        if (this.idToGamepad.has(index)) {
+          handleGamepad(gamepadWithMapping.gamepad, gamepadWithMapping.mapping, that.window)
+        }
+      })
+    }
 
     if (that.state !== GamePadHandlerState.OFF) {
-      requestAnimationFrame(() => that.gamepadLoop(that))
+      requestAnimationFrame((time) => that.gamepadLoop(that, time))
     }
+  }
+
+  public getGamepad(id: GamepadId): Gamepad | undefined {
+    const gamepadWithMapping = this.idToGamepad.get(id)
+    if (gamepadWithMapping) {
+      return gamepadWithMapping.gamepad
+    }
+    return undefined
   }
 }

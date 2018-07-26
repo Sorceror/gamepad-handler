@@ -177,3 +177,4 @@ Every contribution is welcomed :)
 - [ ] Replace the `setInterval` method to listen to gamepads buttons. [Web Worker](https://developer.mozilla.org/en-US/docs/Web/API/Worker) might be a better way to handle that.
 - [X] Handle axis mapping
 - [ ] Provide an API to easily allow the final user to define/redefine the mapping
+- [X] onConnect and onDisconnect events
