@@ -16,6 +16,8 @@ export interface GamepadOptions {
 
   defaultNegativeThreshold?: number
   defaultPositiveThreshold?: number
+
+  listAvailableGamepads?: boolean
 }
 
 export type GamepadId = number

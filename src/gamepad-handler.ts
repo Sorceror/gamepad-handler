@@ -16,6 +16,7 @@ export class GamePadHandler {
   public readonly window: Window
   private state: GamePadHandlerState = GamePadHandlerState.OFF
   private idToGamepad: Map<GamepadId, GamepadWithMappings> = new Map()
+  private availableGamepads: Set<string> = new Set()
   private lastTimestampCheck = 0
 
   constructor(public gamepadsMapping: Array<GamepadMapping>, public readonly options: GamepadOptions = {}, _window: Window = window) {
@@ -24,6 +25,7 @@ export class GamePadHandler {
     this.options.defaultActionThrottle = this.options.defaultActionThrottle || DEFAULT_ACTION_THROTTLE
     this.options.defaultNegativeThreshold = this.options.defaultNegativeThreshold || DEFAULT_MIN_THRESHOLD
     this.options.defaultPositiveThreshold = this.options.defaultPositiveThreshold || DEFAULT_MAX_THRESHOLD
+    this.options.listAvailableGamepads = this.options.listAvailableGamepads || false
   }
 
   public start(): void {
@@ -85,15 +87,25 @@ export class GamePadHandler {
   }
 
   private checkGamepadAvailability(gamepad: Gamepad): void {
-    if (isNil(gamepad) === false && this.idToGamepad.has(gamepad.index) === false) {
-      const gamepadWithMapping = linkGamepadToMappings(gamepad, this.gamepadsMapping)
-      console.warn(gamepad)
-      console.warn(gamepadWithMapping)
-      if (gamepadWithMapping) {
-        this.idToGamepad.set(gamepad.index, gamepadWithMapping)
-        const onConnect = gamepadWithMapping.mapping.onConnect
-        if (onConnect !== undefined) {
-          onConnect(gamepad.index)
+    if (isNil(gamepad) === false) {
+      if (this.availableGamepads.has(gamepad.id) === false) {
+        this.availableGamepads.add(gamepad.id)
+        if (this.options.listAvailableGamepads) {
+          console.info(`Found available gamepad with id: ${gamepad.id}`)
+        }
+      }
+      if (this.idToGamepad.has(gamepad.index) === false) {
+        const gamepadWithMapping = linkGamepadToMappings(gamepad, this.gamepadsMapping)
+        if (gamepadWithMapping) {
+          if (gamepadWithMapping.mapping.debug) {
+            console.warn(`Gamepad with mapping found, id: ${gamepadWithMapping.gamepad.id}`)
+            console.warn(gamepadWithMapping)
+          }
+          this.idToGamepad.set(gamepad.index, gamepadWithMapping)
+          const onConnect = gamepadWithMapping.mapping.onConnect
+          if (onConnect !== undefined) {
+            onConnect(gamepad.index)
+          }
         }
       }
     }
@@ -103,11 +115,11 @@ export class GamePadHandler {
     if (timestamp - that.lastTimestampCheck > 500) {
       const gamepads = that.window.navigator.getGamepads()
       if (isNil(gamepads) === false) {
-        gamepads.forEach((gamepad) => {
+        for (const gamepad of gamepads) {
           if (gamepad) {
             this.checkGamepadAvailability(gamepad)
           }
-        })
+        }
       }
       that.lastTimestampCheck = timestamp
     }
@@ -137,5 +149,9 @@ export class GamePadHandler {
       return gamepadWithMapping.gamepad
     }
     return undefined
+  }
+
+  public getAllAvailableGamepadIds(): Set<string> {
+    return this.availableGamepads
   }
 }
