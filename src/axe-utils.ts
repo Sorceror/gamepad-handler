@@ -38,7 +38,7 @@ export function handleAxis(axisValue: number, axisIndex: number, axisInformation
   }
 
   if (debug && axisValue !== 0) {
-    console.warn(`Axis '${axisInformation.axeInfo}' registered at index ${axisIndex}.
+    console.info(`Axis '${axisInformation.axeInfo}' registered at index ${axisIndex}.
       Value : ${truncateDecimal(axisValue, 3)}`, axisInformation)
   }
 

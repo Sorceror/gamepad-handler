@@ -98,8 +98,8 @@ export class GamePadHandler {
         const gamepadWithMapping = linkGamepadToMappings(gamepad, this.gamepadsMapping)
         if (gamepadWithMapping) {
           if (gamepadWithMapping.mapping.debug) {
-            console.warn(`Gamepad with mapping found, id: ${gamepadWithMapping.gamepad.id}`)
-            console.warn(gamepadWithMapping)
+            console.info(`Gamepad mapping found for gamepad id: ${gamepadWithMapping.gamepad.id}`)
+            console.info(gamepadWithMapping)
           }
           this.idToGamepad.set(gamepad.index, gamepadWithMapping)
           const onConnect = gamepadWithMapping.mapping.onConnect

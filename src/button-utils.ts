@@ -12,7 +12,7 @@ export interface ButtonInformation {
 
 export function handleButton(button: GamepadButton, buttonInformation: ButtonInformation, window: Window, debug: boolean = false) {
   if (debug && button.pressed) {
-    console.warn('You pressed the button mapped to :', buttonInformation)
+    console.info('You pressed the button mapped to :', buttonInformation)
   }
 
   if (buttonInformation.throwKeyEvent) {

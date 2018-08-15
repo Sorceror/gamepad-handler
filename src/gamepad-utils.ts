@@ -44,7 +44,7 @@ export function handleGamepad(gamepad: Gamepad, gamepadMapping: GamepadMapping, 
     handleGamePadButtons(gamepad, gamepadMapping, window)
     handleGamePadAxis(gamepad, gamepadMapping, window)
   } else {
-    console.warn('Game pad disconnected :/', gamepad)
+    console.warn('Gamepad in disconnected state :/', gamepad)
   }
 }
 
