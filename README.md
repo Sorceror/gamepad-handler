@@ -145,7 +145,7 @@ gamepadHandler.axesMapping = axesMapping
 
 
 ## Contribution
-This library is developped in TypeScript, please respect the tslint provided.
+This library is developed in TypeScript, please respect the tslint provided.
 Every contribution is welcomed :)
 
 ## Changelog
@@ -169,7 +169,7 @@ Every contribution is welcomed :)
 
 ### 0.0.1
 
-- Initial release, to test if the package was corecctly released.
+- Initial release, to test if the package was correctly released.
 
 ## Roadmap
 
@@ -178,3 +178,5 @@ Every contribution is welcomed :)
 - [X] Handle axis mapping
 - [ ] Provide an API to easily allow the final user to define/redefine the mapping
 - [X] onConnect and onDisconnect events
+- [ ] Add support for onRelease events (currently only onPress events - events are continuously triggered when button is pressed for longer period of time)
+- [ ] Add predefined mappings for Oculus touch gamepads
