@@ -57,15 +57,12 @@ export class GamePadHandler {
   }
 
   private listen(): void {
-    // Infinite loop to listen to the state of the game pads
-    // this might be triggered only when some gamepad is connected, but because of bug in the Gamepad API implementations
-    // it has to be runned periodically for now
     if (this.state === GamePadHandlerState.OFF) {
       this.state = GamePadHandlerState.ON
     }
-    requestAnimationFrame((time) => {
-      this.gamepadLoop(this, time)
-    })
+
+    // Infinite loop to listen to the state of the game pads and update their internal values (e.g. position, orientation)
+    this.requestNextLoop()
 
     this.window.addEventListener('gamepadconnected', (event) => {
       this.checkGamepadAvailability((event as GamepadEvent).gamepad)
@@ -111,9 +108,9 @@ export class GamePadHandler {
     }
   }
 
-  private pollGamepads(that: GamePadHandler, timestamp: number) {
-    if (timestamp - that.lastTimestampCheck > 500) {
-      const gamepads = that.window.navigator.getGamepads()
+  private pollGamepads(timestamp: number) {
+    const gamepads = this.window.navigator.getGamepads()
+    if (timestamp - this.lastTimestampCheck > 500) {
       if (isNil(gamepads) === false) {
         for (const gamepad of gamepads) {
           if (gamepad) {
@@ -121,26 +118,30 @@ export class GamePadHandler {
           }
         }
       }
-      that.lastTimestampCheck = timestamp
+      this.lastTimestampCheck = timestamp
     }
   }
 
-  private gamepadLoop(that: GamePadHandler, timestamp: number): void {
-    // Gamepad API implementations are quite bugy, for now it's necessary to poll gamepads periodically
-    // when gamepadconnected events will be triggered properly and with valid data it can be removed
-    this.pollGamepads(that, timestamp)
-
+  private handleGamepads() {
     if (this.idToGamepad.size !== 0) {
       this.idToGamepad.forEach((gamepadWithMapping, index) => {
         if (this.idToGamepad.has(index)) {
-          handleGamepad(gamepadWithMapping.gamepad, gamepadWithMapping.mapping, that.window)
+          handleGamepad(gamepadWithMapping.gamepad, gamepadWithMapping.mapping, this.window)
         }
       })
     }
+  }
 
-    if (that.state !== GamePadHandlerState.OFF) {
-      requestAnimationFrame((time) => that.gamepadLoop(that, time))
+  private requestNextLoop() {
+    if (this.state !== GamePadHandlerState.OFF) {
+      requestAnimationFrame((time) => this.gamepadLoop(time))
     }
+  }
+
+  private gamepadLoop(timestamp: number): void {
+    this.pollGamepads(timestamp)
+    this.handleGamepads()
+    this.requestNextLoop()
   }
 
   public getGamepad(id: GamepadId): Gamepad | undefined {
