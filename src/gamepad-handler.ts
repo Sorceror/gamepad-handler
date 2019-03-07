@@ -32,7 +32,7 @@ export class GamePadHandler {
     if (this.window.navigator.getGamepads !== undefined) {
       this.gamepadsMapping.forEach((gp: GamepadMapping) => {
         gp.buttonsMapping.forEach((btn: ButtonInformation) => {
-          btn.canExecuteAction = true
+          btn.onPressedNotified = false
           btn.delay = btn.delay || this.options.defaultActionThrottle
         })
 

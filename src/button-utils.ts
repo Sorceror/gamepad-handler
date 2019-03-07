@@ -3,11 +3,14 @@ export interface ButtonInformation {
   btnInfo: string
   throwKeyEvent: boolean
   key?: string
-  canExecuteAction?: boolean
+  onPressedNotified?: boolean
   pressed?: boolean
   delay?: number
 
-  action?(): void
+  onClickAction?(): void
+  onPressedAction?(): void
+  onHoldAction?(): void
+  onReleasedAction?(): void
 }
 
 export function handleButton(button: GamepadButton, buttonInformation: ButtonInformation, window: Window, debug: boolean = false) {
@@ -15,40 +18,47 @@ export function handleButton(button: GamepadButton, buttonInformation: ButtonInf
     console.info('You pressed the button mapped to :', buttonInformation)
   }
 
-  if (buttonInformation.throwKeyEvent) {
-    button.pressed ? triggerKey(buttonInformation, window) : triggerKeyEnd(buttonInformation, window)
-  } else if (button.pressed) {
-    execAction(buttonInformation)
+  if (button.pressed) {
+    onPressed(buttonInformation, window)
+  } else {
+    onRelease(buttonInformation, window)
   }
 }
 
-function triggerKey(btnInfo: ButtonInformation, window: Window) {
-  const e = new KeyboardEvent('keydown', { key: btnInfo.key })
-  window.document.dispatchEvent(e)
+function onPressed(btnInfo: ButtonInformation, window: Window) {
+  if (btnInfo.throwKeyEvent) {
+    const e = new KeyboardEvent('keydown', { key: btnInfo.key })
+    window.document.dispatchEvent(e)
+  }
+
+  if (btnInfo.onPressedNotified && btnInfo.onHoldAction) {
+    btnInfo.onHoldAction()
+  }
+
+  if (!btnInfo.onPressedNotified && btnInfo.onPressedAction) {
+    btnInfo.onPressedNotified = true
+    btnInfo.onPressedAction()
+  }
+
   btnInfo.pressed = true
 }
 
-function triggerKeyEnd(btnInfo: ButtonInformation, window: Window) {
+function onRelease(btnInfo: ButtonInformation, window: Window) {
   if (btnInfo.pressed) {
-    const e = new KeyboardEvent('keyup', { key: btnInfo.key })
-    window.document.dispatchEvent(e)
+    if (btnInfo.throwKeyEvent) {
+      const e = new KeyboardEvent('keyup', { key: btnInfo.key })
+      window.document.dispatchEvent(e)
+    }
+
+    if (btnInfo.onReleasedAction) {
+      btnInfo.onPressedNotified = false
+      btnInfo.onReleasedAction()
+    }
+
+    if (btnInfo.onClickAction) {
+      btnInfo.onClickAction()
+    }
+
     btnInfo.pressed = false
   }
-}
-
-function execAction(btnInfo: ButtonInformation) {
-  if (!btnInfo.canExecuteAction) {
-    return
-  }
-
-  if (typeof btnInfo.action !== 'function') {
-    console.warn('No action given to execute')
-    return
-  }
-
-  btnInfo.action()
-  btnInfo.canExecuteAction = false
-  setTimeout(() => {
-    btnInfo.canExecuteAction = true
-  }, btnInfo.delay)
 }
