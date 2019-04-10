@@ -120,6 +120,16 @@ export class GamePadHandler {
       }
       this.lastTimestampCheck = timestamp
     }
+    // since Chrome 73 it's necessary to update gamepad instances in between frames
+    // gamepad instance is considered only a snapshot of data in time
+    for (const gamepad of gamepads) {
+      if (gamepad) {
+        const connectedGamepad = this.idToGamepad.get(gamepad.index)
+        if (connectedGamepad) {
+          connectedGamepad.gamepad = gamepad
+        }
+      }
+    }
   }
 
   private handleGamepads() {
